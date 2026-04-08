@@ -104,6 +104,34 @@ If you sell the software:
 5. Add release notes and download links to `README.md`
 6. Optionally upload the same files to Google Drive for direct customer download
 
+## GitHub Release Workflow
+
+### Using GitHub UI
+1. Navigate to the GitHub repository.
+2. Click **Releases** → **Draft a new release**.
+3. Tag the release (e.g. `v1.0.0`) and give it a title.
+4. Add a short changelog or release notes.
+5. Upload the platform-specific build assets:
+   - `Elite Job Agent.dmg`
+   - `Elite Job Agent.exe`
+   - `Elite_Job_Agent-x86_64.AppImage`
+6. Publish the release.
+
+### Using GitHub CLI
+```bash
+gh release create v1.0.0 \
+  dist/Elite\ Job\ Agent.dmg \
+  dist/Elite\ Job\ Agent.exe \
+  dist/Elite_Job_Agent-x86_64.AppImage \
+  --title "Elite Job Agent v1.0.0" \
+  --notes "Initial cross-platform release with macOS, Windows, and Linux installers."
+```
+
+### What this gives you
+- Stable versioned download links
+- Cleaner repo with no binary history
+- A professional distribution channel for paying customers
+
 ## Security and Compliance
 
 - Do not publish your own API keys, secrets, or local credentials.
