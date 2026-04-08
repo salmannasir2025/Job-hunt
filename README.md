@@ -17,6 +17,15 @@ A production-ready Python application for automated job search using a multi-age
 4. In the GUI, go to 'The Vault' tab, unlock with password 'admin', and set your API keys and client_secret.json path.
 5. Authorize Gmail when prompted.
 
+## Cross-Platform Builds
+For platform-specific installers, use the provided build tools:
+- `build_macos.sh` for macOS `.dmg`/`.app`
+- `build_windows.bat` for Windows `.exe`
+- `build_linux.sh` for Linux standalone or AppImage
+- `build.py` detects your OS and runs the correct build script
+
+See `BUILD.md` for full build and packaging instructions.
+
 ## Requirements
 - Python 3.8+
 - API keys for Groq or other LLMs
