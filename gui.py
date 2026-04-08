@@ -31,20 +31,60 @@ def save_tracker(data):
 tracker = load_tracker()
 
 console_text = ''
+results_area = None
+results_count = None
 
 def update_console(text):
     global console_text
     console_text += text + '\n'
     console.value = console_text
 
+
+def append_results(text):
+    global results_area
+    if results_area is None:
+        return
+    timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    results_area.value = f'[{timestamp}] {text}\n\n' + results_area.value
+
+
+def clear_results():
+    global results_area, results_count
+    if results_area is not None:
+        results_area.value = ''
+    if results_count is not None:
+        results_count.text = 'Results: 0'
+    update_console('Search results cleared')
+
+
+def export_results():
+    if results_area is None:
+        update_console('No results available for export.')
+        return
+    export_path = 'search_results.txt'
+    with open(export_path, 'w') as f:
+        f.write(results_area.value)
+    update_console(f'Results exported to {export_path}')
+    log_progress('Search results exported')
+
+
+def set_results_count(count):
+    global results_count
+    if results_count is not None:
+        results_count.text = f'Results: {count}'
+
+
 def research(portal, keywords, url):
     if url and not validators.url(url):
         update_console('Invalid URL provided')
+        append_results('Invalid URL provided')
         return
     result = run_research(portal, keywords, url)
-    update_console(f'Research result: {result}')
+    formatted_result = f'Search use: Portal={portal or "Custom URL"}, Keywords={keywords}, URL={url or "N/A"}\n\n{result}'
+    update_console('Research result returned successfully')
+    append_results(formatted_result)
     log_progress(f"Research: Portal={portal}, Keywords={keywords}, URL={url}, Result={str(result)[:200]}")
-    # Parse jobs and process
+
     jobs = []
     if 'Title:' in result:
         lines = result.split('\n')
@@ -55,6 +95,9 @@ def research(portal, keywords, url):
                     title = parts[0].replace('Title: ', '')
                     company = parts[1].replace('Company: ', '')
                     jobs.append((title, company))
+    set_results_count(len(jobs) if jobs else 1)
+    if not jobs:
+        append_results('No structured job entries could be parsed from this result.')
     for title, company in jobs:
         job_info = f"Apply for {title} at {company}"
         audit_and_draft(job_info)
@@ -85,6 +128,7 @@ status_label = ui.label(f'Sent: {tracker["sent"]}, Bounces: {tracker["bounces"]}
 with ui.tabs() as tabs:
     dashboard = ui.tab('Dashboard')
     quick_start = ui.tab('Quick Start')
+    results = ui.tab('Results')
     job_hunt = ui.tab('Job Hunt')
     vault = ui.tab('The Vault')
     blacklist = ui.tab('Blacklist')
@@ -133,6 +177,14 @@ with ui.tab_panels(tabs, value=dashboard):
         keywords_input = ui.input('Keywords')
         url_input = ui.input('Custom URL')
         ui.button('Research', on_click=lambda: research(portal_select.value, keywords_input.value, url_input.value))
+
+    with ui.tab_panel(results):
+        ui.label('Search Results')
+        results_count = ui.label('Results: 0')
+        with ui.row().style('gap: 10px'):
+            ui.button('Clear Results', on_click=clear_results)
+            ui.button('Export Results', on_click=export_results)
+        results_area = ui.textarea('', readonly=True, value='', rows=20, label='Search Results', width='100%')
 
     with ui.tab_panel(vault):
         password_input = ui.input('Password', password=True)

@@ -56,6 +56,7 @@ After you build or download a platform-specific installer, follow these steps:
 ## Security
 - All sensitive data is encrypted in vault.dat using hardware-bound keys.
 - vault.dat, token.json, and .env are gitignored.
+- Local Bandit security scan passed on core source files with no issues found.
 
 ## Usage
 - Use 'Job Hunt' tab to research jobs.
