@@ -24,7 +24,7 @@ For platform-specific installers, use the provided build tools:
 - `build_linux.sh` for Linux standalone or AppImage
 - `build.py` detects your OS and runs the correct build script
 
-See `BUILD.md` for full build and packaging instructions.
+See `BUILD.md` and `RELEASES.md` for full build, packaging, and distribution instructions.
 
 ## Requirements
 - Python 3.8+
