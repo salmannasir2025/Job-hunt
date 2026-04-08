@@ -84,6 +84,7 @@ status_label = ui.label(f'Sent: {tracker["sent"]}, Bounces: {tracker["bounces"]}
 
 with ui.tabs() as tabs:
     dashboard = ui.tab('Dashboard')
+    quick_start = ui.tab('Quick Start')
     job_hunt = ui.tab('Job Hunt')
     vault = ui.tab('The Vault')
     blacklist = ui.tab('Blacklist')
@@ -91,6 +92,41 @@ with ui.tabs() as tabs:
 with ui.tab_panels(tabs, value=dashboard):
     with ui.tab_panel(dashboard):
         ui.label('Live Dashboard')
+
+    with ui.tab_panel(quick_start):
+        ui.markdown('''
+### Quick Start Guide
+
+**1. Vault Setup**
+- Go to the **The Vault** tab.
+- Enter password: `admin`.
+- Save your **Groq API key**.
+- Save the **Gmail `client_secret.json` path**.
+- Click **Authenticate Gmail** and complete the browser popup.
+
+**2. Start Job Hunt**
+- Go to the **Job Hunt** tab.
+- Select a portal or enter a custom URL.
+- Add keywords and click **Research**.
+
+**3. Review Outputs**
+- Check the **Console** for agent steps.
+- Drafts are saved to Gmail for review.
+- Use the **Dashboard** to track sent emails, bounces, and leads.
+
+**4. Bounce Recovery**
+- The app scans your Gmail inbox for bounced messages automatically.
+- Bounced companies are reprocessed through the Researcher and Ghostwriter agents.
+
+**Tips**
+- Keep your `client_secret.json` file path correct.
+- Use the **Blacklist** tab to ignore companies or domains.
+- Adjust the **Communication Tone** slider before drafting.
+
+**Need help?**
+- Check `README.md` or `BUILD.md` in the project folder.
+- Ensure the app has permission to open browser authentication.
+''')
 
     with ui.tab_panel(job_hunt):
         portal_select = ui.select(['Indeed', 'LinkedIn', 'GulfTalent'], label='Portal')
