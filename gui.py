@@ -1,5 +1,5 @@
 from nicegui import ui
-from agents import run_research, run_audit, run_draft, run_manager_check, authenticate_gmail, is_gmail_authenticated, get_gmail_service
+from agents import run_research, run_audit, run_draft, run_manager_check, authenticate_gmail, is_gmail_authenticated, get_gmail_service, find_contact_email, save_draft
 from security_vault import set_key, get_key
 import json
 import os
@@ -103,21 +103,47 @@ def research(portal, keywords, url):
         audit_and_draft(job_info)
 
 def audit_and_draft(job_info):
-    # Parse job_info for company
-    if 'at ' in job_info:
+    # Parse job_info for title and company
+    title = 'Job Application'
+    company = 'Unknown'
+    if 'Title:' in job_info and 'Company:' in job_info:
+        parts = job_info.split(', ')
+        for part in parts:
+            if part.startswith('Title:'):
+                title = part.replace('Title: ', '').strip()
+            if part.startswith('Company:'):
+                company = part.replace('Company: ', '').strip()
+    elif 'at ' in job_info:
         company = job_info.split('at ')[1].strip()
-    else:
-        company = 'Unknown'
-    domain = company.lower().replace(' ', '').replace(',', '') + '.com'
-    email = 'hr@' + domain
+
+    post_url = ''
+    if 'Link:' in job_info:
+        link_part = [p for p in job_info.split(', ') if p.startswith('Link:')]
+        if link_part:
+            post_url = link_part[0].replace('Link: ', '').strip()
+
+    email = find_contact_email(company, post_url)
+    if not email:
+        update_console(f'No contact email discovered for {company}')
+        append_results(f'No contact email discovered for {company}. Skipping draft.')
+        return
+
+    domain = email.split('@')[-1]
     audit_result = run_audit(company, domain, email)
     update_console(f'Audit: {audit_result}')
-    if 'legit' in str(audit_result).lower() or 'valid' in str(audit_result).lower():  # Improved check
-        draft = run_draft(job_info, tone_slider.value)
-        update_console(f'Draft: {draft}')
-        tracker['sent'] += 1
-        save_tracker(tracker)
-        update_status()
+    if 'legit' in str(audit_result).lower() or 'valid' in str(audit_result).lower() or 'true' in str(audit_result).lower():
+        draft_body = run_draft(job_info, tone_slider.value)
+        if draft_body and 'Failed' not in draft_body:
+            subject = f'Application for {title} at {company}'
+            saved = save_draft(email, subject, draft_body)
+            update_console(f'Draft saved: {saved}')
+            tracker['sent'] += 1
+            save_tracker(tracker)
+            update_status()
+        else:
+            update_console('Draft generation failed, no Gmail draft saved')
+    else:
+        update_console('Audit did not verify the contact email. Draft not created.')
 
 def update_status():
     status_label.text = f'Sent: {tracker["sent"]}, Bounces: {tracker["bounces"]}, Leads: {tracker["leads"]}'
@@ -173,7 +199,7 @@ with ui.tab_panels(tabs, value=dashboard):
 ''')
 
     with ui.tab_panel(job_hunt):
-        portal_select = ui.select(['Indeed', 'LinkedIn', 'GulfTalent'], label='Portal')
+        portal_select = ui.select(['All Portals', 'Indeed', 'LinkedIn', 'GulfTalent', 'Bayt'], label='Portal')
         keywords_input = ui.input('Keywords')
         url_input = ui.input('Custom URL')
         ui.button('Research', on_click=lambda: research(portal_select.value, keywords_input.value, url_input.value))

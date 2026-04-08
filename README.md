@@ -6,6 +6,8 @@ A production-ready Python application for automated job search using a multi-age
 ## Features
 - **Secure Vault**: Encrypted storage for API keys and sensitive data.
 - **Multi-Agent System**: Researcher, Auditor, Ghostwriter, and Manager agents using CrewAI.
+- **Multi-Portal Search**: Covers Indeed, Bayt, GulfTalent, LinkedIn, and All Portals mode.
+- **Verified Contacts**: Contact email discovery and audit before draft creation.
 - **GUI**: Modern interface with NiceGUI.
 - **Bounce Recovery**: Automatic handling of bounced emails.
 - **Human-Style Emails**: AI-generated emails following strict guidelines.

@@ -7,6 +7,9 @@ from bs4 import BeautifulSoup
 from crawl4ai import Crawl4AI
 import whois
 import validators
+import re
+from email.mime.text import MIMEText
+from email.header import Header
 from groq import Groq
 import googleapiclient.discovery
 from google.oauth2.credentials import Credentials
@@ -18,10 +21,11 @@ import webbrowser
 # Set API keys
 groq_key = get_key('groq_api_key')
 if groq_key:
-    # os.environ['GROQ_API_KEY'] = groq_key  # Removed for security
+    pass  # Groq API key loaded for use by the Groq client
 
 # For Gmail - Initialize as None, will be set during authentication
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/gmail.drafts']
+TOKEN_PATH = os.path.join(os.getcwd(), 'token.json')  # nosec
 creds = None
 service = None
 
@@ -33,7 +37,7 @@ def authenticate_gmail(client_secret_path):
     """
     global creds, service
     try:
-        token_path = 'token.json'
+        token_path = TOKEN_PATH
         
         # Check if token already exists
         if os.path.exists(token_path):
@@ -72,23 +76,124 @@ def is_gmail_authenticated():
     """Check if Gmail is currently authenticated"""
     return service is not None and creds is not None
 
+
+def find_emails_in_text(text: str) -> list:
+    emails = re.findall(r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}', text)
+    return list(dict.fromkeys(emails))
+
+
+def normalize_domain(company: str) -> str:
+    normalized = re.sub(r'[^a-z0-9]', '', company.lower())
+    return f'{normalized}.com'
+
+
+def find_contact_email(company: str, url: str = None) -> str:
+    candidates = []
+    if url:
+        try:
+            response = requests.get(url, timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
+            candidates.extend(find_emails_in_text(response.text))
+        except Exception as e:
+            print(f'Contact email fetch failed: {e}')
+
+    domain = normalize_domain(company)
+    common_prefixes = ['hr', 'careers', 'jobs', 'apply', 'recruitment', 'contact', 'info']
+    for prefix in common_prefixes:
+        email = f'{prefix}@{domain}'
+        if validators.email(email):
+            candidates.append(email)
+
+    return candidates[0] if candidates else ''
+
+
 # Tools
 @tool
 def scrape_portal(portal: str, keywords: str) -> str:
+    def parse_job_entry(title, company, link=''):
+        entry = f'Title: {title}, Company: {company}'
+        if link:
+            entry += f', Link: {link}'
+        return entry
+
+    if portal == 'All Portals':
+        portals = ['Indeed', 'GulfTalent', 'Bayt', 'LinkedIn']
+        results = []
+        for p in portals:
+            results.append(f'--- {p} ---')
+            results.append(scrape_portal(p, keywords))
+        return '\n'.join(results)
+
     if portal == 'Indeed':
-        url = f'https://ae.indeed.com/jobs?q={keywords.replace(" ", "+")}'
-        response = requests.get(url)
+        url = f'https://ae.indeed.com/jobs?q={keywords.replace(' ', '+')}'
+        response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
         soup = BeautifulSoup(response.text, 'html.parser')
         jobs = soup.find_all('div', class_='job_seen_beacon')
         results = []
-        for job in jobs[:5]:
+        for job in jobs[:8]:
             title_elem = job.find('h2')
             company_elem = job.find('span', class_='companyName')
+            link_elem = job.find('a', href=True)
             if title_elem and company_elem:
                 title = title_elem.text.strip()
                 company = company_elem.text.strip()
-                results.append(f'Title: {title}, Company: {company}')
+                link = f"https://ae.indeed.com{link_elem['href']}" if link_elem else ''
+                results.append(parse_job_entry(title, company, link))
         return '\n'.join(results)
+
+    if portal == 'GulfTalent':
+        url = f'https://www.gulftalent.com/uae/jobs/search?keywords={keywords.replace(' ', '+')}'
+        response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        jobs = soup.find_all('a', class_='job-card-link') or soup.find_all('li', class_='search-result')
+        results = []
+        for job in jobs[:8]:
+            title_elem = job.find('h2') or job.find('span', class_='job-title')
+            company_elem = job.find('div', class_='company-name') or job.find('span', class_='company')
+            link = job['href'] if job.has_attr('href') else ''
+            if title_elem and company_elem:
+                title = title_elem.text.strip()
+                company = company_elem.text.strip()
+                if link and not link.startswith('http'):
+                    link = f'https://www.gulftalent.com{link}'
+                results.append(parse_job_entry(title, company, link))
+        return '\n'.join(results)
+
+    if portal == 'Bayt':
+        url = f'https://www.bayt.com/en/uae/jobs/search/?keywords={keywords.replace(' ', '+')}'
+        response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        jobs = soup.find_all('article', class_='job-card') or soup.find_all('div', class_='search-result')
+        results = []
+        for job in jobs[:8]:
+            title_elem = job.find('h2') or job.find('a', class_='job-card-title')
+            company_elem = job.find('div', class_='company') or job.find('span', class_='company-name')
+            link_elem = job.find('a', href=True)
+            if title_elem and company_elem:
+                title = title_elem.text.strip()
+                company = company_elem.text.strip()
+                link = link_elem['href'] if link_elem else ''
+                if link and not link.startswith('http'):
+                    link = f'https://www.bayt.com{link}'
+                results.append(parse_job_entry(title, company, link))
+        return '\n'.join(results)
+
+    if portal == 'LinkedIn':
+        url = f'https://www.linkedin.com/jobs/search?keywords={keywords.replace(' ', '%20')}'
+        response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        jobs = soup.find_all('li', class_='result-card') or soup.find_all('div', class_='base-search-card')
+        results = []
+        for job in jobs[:8]:
+            title_elem = job.find('h3') or job.find('span', class_='screen-reader-text')
+            company_elem = job.find('h4') or job.find('a', class_='result-card__subtitle-link')
+            link_elem = job.find('a', href=True)
+            if title_elem and company_elem:
+                title = title_elem.text.strip()
+                company = company_elem.text.strip()
+                link = link_elem['href'] if link_elem else ''
+                results.append(parse_job_entry(title, company, link))
+        return '\n'.join(results)
+
     return 'Scraping not implemented for this portal'
 
 @tool
@@ -126,9 +231,14 @@ def draft_email(job_info: str, tone: float) -> str:
         return 'Failed to draft'
 
 @tool
-def save_draft(content: str) -> str:
+def save_draft(to_email: str, subject: str, body: str) -> str:
     if service:
-        draft = {'message': {'raw': base64.urlsafe_b64encode(content.encode()).decode()}}
+        msg = MIMEText(body, 'plain', 'utf-8')
+        msg['To'] = to_email
+        msg['From'] = 'me'
+        msg['Subject'] = Header(subject, 'utf-8')
+        raw_message = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+        draft = {'message': {'raw': raw_message}}
         service.users().drafts().create(userId='me', body=draft).execute()
         return 'Draft saved'
     return 'Gmail not configured'
