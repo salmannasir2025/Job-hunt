@@ -1,5 +1,5 @@
 from nicegui import ui
-from agents import run_research, run_audit, run_draft, run_manager_check
+from agents import run_research, run_audit, run_draft, run_manager_check, authenticate_gmail, is_gmail_authenticated, get_gmail_service
 from security_vault import set_key, get_key
 import json
 import os
@@ -103,14 +103,61 @@ with ui.tab_panels(tabs, value=dashboard):
         unlock_button = ui.button('Unlock')
         vault_panel = ui.column()
         with vault_panel:
+            # Groq API Key Section
+            ui.label('🔑 Groq API Configuration').classes('font-bold')
             groq_input = ui.input('Groq API Key', password=True)
-            ui.button('Save Groq Key', on_click=lambda: (set_key('groq_api_key', groq_input.value), log_progress("Groq API key saved")))
+            ui.button('Save Groq Key', on_click=lambda: (set_key('groq_api_key', groq_input.value), log_progress("Groq API key saved"), update_console("Groq API key saved successfully")))
+            
+            # Gmail Authentication Section
+            ui.label('📧 Gmail Authentication').classes('font-bold')
+            gmail_status = ui.label('Status: Not Authenticated')
+            
+            def check_gmail_status():
+                if is_gmail_authenticated():
+                    gmail_status.text = '✅ Status: Gmail Authenticated'
+                else:
+                    gmail_status.text = '❌ Status: Not Authenticated'
+            
+            def open_gmail_auth():
+                client_secret_path = get_key('client_secret_path')
+                if not client_secret_path or not os.path.exists(client_secret_path):
+                    update_console("Error: client_secret.json path not set. Save path first.")
+                    return
+                update_console("Opening Gmail authentication in browser...")
+                log_progress("Gmail authentication initiated - browser popup opening")
+                creds, svc = authenticate_gmail(client_secret_path)
+                if creds and svc:
+                    update_console("✅ Gmail authenticated successfully!")
+                    log_progress("Gmail authentication successful")
+                    check_gmail_status()
+                else:
+                    update_console("❌ Gmail authentication failed")
+                    log_progress("Gmail authentication failed")
+            
+            ui.button('Authenticate Gmail (Opens Browser)', on_click=open_gmail_auth).classes('bg-blue-500')
+            ui.button('Check Status', on_click=check_gmail_status)
+            
+            # Client Secret Path Section
+            ui.label('🔐 Client Secret Configuration').classes('font-bold')
             client_secret_input = ui.input('Client Secret JSON Path')
-            ui.button('Save Client Secret Path', on_click=lambda: (set_key('client_secret_path', client_secret_input.value), log_progress("Client secret path saved")))
+            def save_client_secret_and_log():
+                set_key('client_secret_path', client_secret_input.value)
+                log_progress("Client secret path saved")
+                update_console("Client secret path saved successfully")
+            ui.button('Save Client Secret Path', on_click=save_client_secret_and_log)
+            
+            # Load previously saved paths if available
+            saved_secret = get_key('client_secret_path')
+            if saved_secret:
+                client_secret_input.value = saved_secret
+            
+            check_gmail_status()  # Check status on panel load
+        
         vault_panel.visible = False
         def unlock():
             if password_input.value == 'admin':  # Simple password
                 vault_panel.visible = True
+                update_console("Vault unlocked")
         unlock_button.on_click(unlock)
 
     with ui.tab_panel(blacklist):

@@ -13,31 +13,64 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 import base64
+import webbrowser
 
 # Set API keys
 groq_key = get_key('groq_api_key')
 if groq_key:
     # os.environ['GROQ_API_KEY'] = groq_key  # Removed for security
 
-# For Gmail
-SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
+# For Gmail - Initialize as None, will be set during authentication
+SCOPES = ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/gmail.drafts']
 creds = None
-token_path = get_key('token_path') or 'token.json'
-client_secret_path = get_key('client_secret_path')
-if client_secret_path and os.path.exists(client_secret_path):
-    if os.path.exists(token_path):
-        creds = Credentials.from_authorized_user_file(token_path, SCOPES)
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(client_secret_path, SCOPES)
-            creds = flow.run_local_server(port=0)
+service = None
+
+def authenticate_gmail(client_secret_path):
+    """
+    Authenticate with Gmail using browser popup with account selection.
+    Opens browser for user to select Gmail account and authorize.
+    Returns: (credentials object, service object) or (None, None) on failure
+    """
+    global creds, service
+    try:
+        token_path = 'token.json'
+        
+        # Check if token already exists
+        if os.path.exists(token_path):
+            creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+            if creds and creds.valid:
+                service = googleapiclient.discovery.build('gmail', 'v1', credentials=creds)
+                return creds, service
+            elif creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+                service = googleapiclient.discovery.build('gmail', 'v1', credentials=creds)
+                return creds, service
+        
+        # If no valid token, create new flow with browser popup
+        if not os.path.exists(client_secret_path):
+            return None, None
+        
+        flow = InstalledAppFlow.from_client_secrets_file(client_secret_path, SCOPES)
+        # Run local server with browser popup (opens in default browser with account selection)
+        creds = flow.run_local_server(port=8080, open_browser=True)
+        
+        # Save credentials for future use
         with open(token_path, 'w') as token_file:
             token_file.write(creds.to_json())
-    service = googleapiclient.discovery.build('gmail', 'v1', credentials=creds)
-else:
-    service = None
+        
+        service = googleapiclient.discovery.build('gmail', 'v1', credentials=creds)
+        return creds, service
+    except Exception as e:
+        print(f"Gmail authentication failed: {str(e)}")
+        return None, None
+
+def get_gmail_service():
+    """Get the current Gmail service instance"""
+    return service
+
+def is_gmail_authenticated():
+    """Check if Gmail is currently authenticated"""
+    return service is not None and creds is not None
 
 # Tools
 @tool
