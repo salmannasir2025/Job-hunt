@@ -1,0 +1,16 @@
+crewai
+nicegui
+cryptography
+google-api-python-client
+google-auth-oauthlib
+google-auth-httplib2
+crawl4ai
+requests
+beautifulsoup4
+selenium
+webdriver-manager
+python-whois
+validators
+groq
+together
+openai
