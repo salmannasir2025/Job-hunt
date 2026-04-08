@@ -1,4 +1,4 @@
-# Elite Job Agent
+# Job Agent
 
 ## Overview
 A production-ready Python application for automated job search using a multi-agent AI system. Features secure encrypted storage, web scraping, legitimacy checks, and Gmail integration for email drafting.
