@@ -126,16 +126,38 @@ pip install --upgrade pip
 pip install -r requirements.txt
 pip install pyinstaller
 pip install linuxdeploy
+pip install pillow
 
 echo "✅ Dependencies installed"
 
 # Step 5: Create directories
 mkdir -p "$BUILD_DIR" "$DIST_DIR" "$ASSETS_DIR" "$SPEC_DIR"
 
-# Step 6: Check for icon
+# Step 6: Create icon from logo.png if missing
 if [ ! -f "$ASSETS_DIR/app_icon.png" ]; then
-    echo "⚠️  No app_icon.png found in assets/"
-    echo "   Place a 512x512 PNG icon there for better appearance"
+    if [ -f "$PROJECT_ROOT/logo.png" ]; then
+        echo "🖼️ Generating app_icon.png from logo.png..."
+        python3 - <<'PY'
+from pathlib import Path
+from PIL import Image
+logo = Path('$PROJECT_ROOT/logo.png')
+icon = Path('$ASSETS_DIR/app_icon.png')
+img = Image.open(logo).convert('RGBA')
+img = img.resize((512, 512), Image.LANCZOS)
+icon.parent.mkdir(parents=True, exist_ok=True)
+img.save(icon)
+PY
+        if [ -f "$ASSETS_DIR/app_icon.png" ]; then
+            echo "✅ Generated $ASSETS_DIR/app_icon.png from logo.png"
+        else
+            echo "⚠️  Failed to generate $ASSETS_DIR/app_icon.png"
+        fi
+    else
+        echo "⚠️  No app_icon.png found in assets/"
+        echo "   Place a 512x512 PNG icon there for better appearance"
+    fi
+else
+    echo "✅ Icon found: $ASSETS_DIR/app_icon.png"
 fi
 
 # Step 7: Build with PyInstaller (standalone)

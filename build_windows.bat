@@ -28,21 +28,36 @@ if errorlevel 1 (
 )
 echo ✅ Python found
 
-REM Step 2: Install PyInstaller if needed
+REM Step 2: Install PyInstaller and Pillow if needed
 pip show pyinstaller >nul 2>&1
 if errorlevel 1 (
     echo ⚠️  Installing PyInstaller...
     pip install pyinstaller
+)
+pip show pillow >nul 2>&1
+if errorlevel 1 (
+    echo ⚠️  Installing Pillow...
+    pip install pillow
 )
 
 REM Step 3: Create directories
 if not exist "%ASSETS_DIR%" mkdir "%ASSETS_DIR%"
 echo 📁 Directories created
 
-REM Step 4: Check for icon
+REM Step 4: Check for icon or generate from logo.png
 if not exist "%ASSETS_DIR%\app_icon.ico" (
-    echo ⚠️  No app_icon.ico found in assets\
-    echo    Convert PNG to ICO using: https://icoconvert.com/
+    if exist "logo.png" (
+        echo 🖼️ Generating app_icon.ico from logo.png...
+        python -c "from pathlib import Path; from PIL import Image; logo=Path('logo.png'); icon=Path(r'%ASSETS_DIR%\\app_icon.ico'); img=Image.open(logo).convert('RGBA'); img.save(icon, format='ICO', sizes=[(256,256),(128,128),(64,64),(48,48),(32,32),(16,16)])"
+        if exist "%ASSETS_DIR%\app_icon.ico" (
+            echo ✅ Generated icon from logo.png
+        ) else (
+            echo ⚠️  Failed to generate icon from logo.png
+        )
+    ) else (
+        echo ⚠️  No app_icon.ico found in assets\
+        echo    Convert PNG to ICO using: https://icoconvert.com/
+    )
 ) else (
     echo ✅ Icon found
 )

@@ -95,7 +95,9 @@ brew install python3 create-dmg
 
 2. **Prepare icon** (optional but recommended):
 - Create a 512x512 PNG image named `assets/app_icon.png`
-- Convert to `.icns` using online tool or:
+- Or simply use the project `logo.png` in the root directory.
+- The build scripts now can generate platform-specific icon assets automatically from `logo.png`.
+- Convert manually if needed:
 ```bash
 python3 << 'EOF'
 from PIL import Image
