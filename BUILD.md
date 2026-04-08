@@ -222,6 +222,49 @@ chmod +x Elite_Job_Agent-x86_64.AppImage
 
 ---
 
+## Install and Use After Download
+
+Once you have built or downloaded a platform-specific package, use the following instructions to install and run the app.
+
+### Windows
+- If you built the standalone executable, share `dist\Elite Job Agent.exe`.
+- Users simply double-click the file.
+- If Windows warns about unknown publisher, click **More info** and **Run anyway**.
+- Once the app opens, set up the Vault and authenticate Gmail.
+
+### macOS
+- Share `dist/Elite Job Agent.dmg`.
+- User opens the `.dmg`, then drags `Elite Job Agent.app` to Applications.
+- Optionally, right-click the app and choose **Open** if macOS blocks it on first launch.
+- After launching, use the Vault tab to complete API and Gmail setup.
+
+### Linux
+- Share `dist/Elite_Job_Agent-x86_64.AppImage` or the standalone binary.
+- Make the file executable:
+```bash
+chmod +x dist/Elite_Job_Agent-x86_64.AppImage
+```
+- Run it:
+```bash
+./dist/Elite_Job_Agent-x86_64.AppImage
+```
+- For the standalone binary:
+```bash
+chmod +x dist/elite-job-agent
+./dist/elite-job-agent
+```
+- Complete the Vault settings and Gmail auth.
+
+### First Use
+- Open the app and go to the **Vault** tab.
+- Unlock with the password `admin`.
+- Save your Groq API key.
+- Save the `client_secret.json` path.
+- Click **Authenticate Gmail** and complete the browser popup flow.
+- After authentication, start using the Job Hunt tab.
+
+---
+
 ## File Structure After Build
 
 ```

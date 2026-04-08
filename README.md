@@ -26,6 +26,28 @@ For platform-specific installers, use the provided build tools:
 
 See `BUILD.md` and `RELEASES.md` for full build, packaging, and distribution instructions.
 
+## Installation and Use
+After you build or download a platform-specific installer, follow these steps:
+
+### Windows
+1. Download `Elite Job Agent.exe`.
+2. Double-click the file to launch.
+3. If Windows warns you, choose **More info** → **Run anyway**.
+4. In the Vault tab, unlock with password `admin`, save credentials, and authenticate Gmail.
+
+### macOS
+1. Download `Elite Job Agent.dmg`.
+2. Double-click the `.dmg` file to open.
+3. Drag `Elite Job Agent.app` into the Applications folder.
+4. Open the app from Applications.
+5. Use the Vault tab to save keys and authenticate Gmail.
+
+### Linux
+1. Download `Elite_Job_Agent-x86_64.AppImage` or the standalone binary.
+2. Make it executable: `chmod +x Elite_Job_Agent-x86_64.AppImage`.
+3. Run: `./Elite_Job_Agent-x86_64.AppImage` or `./dist/elite-job-agent`.
+4. Complete Vault setup and Gmail authentication.
+
 ## Requirements
 - Python 3.8+
 - API keys for Groq or other LLMs
