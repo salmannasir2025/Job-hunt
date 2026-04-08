@@ -11,24 +11,22 @@ BUILD_DIR="$PROJECT_ROOT/build"
 DIST_DIR="$PROJECT_ROOT/dist"
 ASSETS_DIR="$PROJECT_ROOT/assets"
 SPEC_DIR="$PROJECT_ROOT/build_specs"
+LOGO_PNG="$PROJECT_ROOT/logo.png"
 
 APP_NAME="Elite Job Agent"
 APP_VERSION="1.0.0"
 BUNDLE_ID="com.salman.elite-job-agent"
 
-echo "🔨 Building Elite Job Agent for macOS..."
-echo "========================================"
+PYTHON_EXECUTABLE="${PYTHON_EXECUTABLE:-$(cd "$PROJECT_ROOT" && if [ -x .venv/bin/python ]; then printf '%s' "$PROJECT_ROOT/.venv/bin/python"; elif command -v python3 &> /dev/null; then command -v python3; else command -v python; fi)}"
 
-# Step 1: Check dependencies
-echo "📋 Checking dependencies..."
-if ! command -v python3 &> /dev/null; then
+if [ -z "$PYTHON_EXECUTABLE" ]; then
     echo "❌ Python 3 not found"
     exit 1
 fi
 
-if ! python3 -m pip show pyinstaller &> /dev/null; then
+if ! "$PYTHON_EXECUTABLE" -m pip show pyinstaller &> /dev/null; then
     echo "⚠️  PyInstaller not installed. Installing..."
-    python3 -m pip install pyinstaller
+    "$PYTHON_EXECUTABLE" -m pip install pyinstaller Pillow
 fi
 
 if ! command -v create-dmg &> /dev/null; then
@@ -39,12 +37,44 @@ fi
 # Step 2: Create assets directory if needed
 mkdir -p "$ASSETS_DIR"
 
-# Step 3: Check for icon
+# Step 3: Create app icon from logo.png if missing
 if [ ! -f "$ASSETS_DIR/app_icon.icns" ]; then
-    echo "⚠️  No app_icon.icns found in assets/"
-    echo "   Place a 512x512 PNG and run: "
-    echo "   python3 -c \"from PIL import Image; img = Image.open('assets/icon.png'); img.save('assets/app_icon.icns')\""
-    echo "   Or create using online converter"
+    if [ -f "$LOGO_PNG" ]; then
+        echo "🖼️ Generating app_icon.icns from logo.png..."
+        ICONSET_DIR="$ASSETS_DIR/app_icon.iconset"
+        rm -rf "$ICONSET_DIR"
+        mkdir -p "$ICONSET_DIR"
+
+        "$PYTHON_EXECUTABLE" - <<'PY'
+from pathlib import Path
+from PIL import Image
+base = Path('$LOGO_PNG')
+iconset = Path('$ICONSET_DIR')
+img = Image.open(base).convert('RGBA')
+if img.width != img.height:
+    size = max(img.width, img.height)
+    background = Image.new('RGBA', (size, size), (0,0,0,0))
+    background.paste(img, ((size-img.width)//2, (size-img.height)//2), img)
+    img = background
+sizes = [16, 32, 64, 128, 256, 512, 1024]
+for size in sizes:
+    for suffix in ['', '@2x']:
+        actual = size * (2 if suffix == '@2x' else 1)
+        icon_file = iconset / f'appicon_{size}x{size}{suffix}.png'
+        img.resize((actual, actual), Image.LANCZOS).save(icon_file)
+PY
+        if command -v iconutil &> /dev/null; then
+            iconutil -c icns "$ICONSET_DIR" -o "$ASSETS_DIR/app_icon.icns"
+            echo "✅ Generated $ASSETS_DIR/app_icon.icns"
+            rm -rf "$ICONSET_DIR"
+        else
+            echo "⚠️  iconutil not available; please install Xcode command line tools or provide assets/app_icon.icns"
+        fi
+    else
+        echo "⚠️  logo.png found but app_icon.icns could not be generated"
+    fi
+else
+    echo "✅ App icon exists: $ASSETS_DIR/app_icon.icns"
 fi
 
 # Step 4: Create spec file

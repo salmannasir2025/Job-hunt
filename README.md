@@ -26,6 +26,8 @@ For platform-specific installers, use the provided build tools:
 - `build_linux.sh` for Linux standalone or AppImage
 - `build.py` detects your OS and runs the correct build script
 
+The macOS build now uses the project `logo.png` as the application icon and installer logo when generating the `.app` and `.dmg`.
+
 See `BUILD.md` and `RELEASES.md` for full build, packaging, and distribution instructions.
 
 ## Installation and Use
