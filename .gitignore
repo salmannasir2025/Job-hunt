@@ -25,3 +25,9 @@ coverage.xml
 .hypothesis
 .DS_Store
 Thumbs.db
+
+# Local-use only documents (do not commit)
+JobHunt_Repo_Analysis.md
+Nanobot_Integration_Guide.docx
+Nanobot_Integration_Guide.md
+SESSION_PROGRESS.md

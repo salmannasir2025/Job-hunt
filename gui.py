@@ -1,5 +1,6 @@
 from nicegui import ui
 from agents import run_research, run_audit, run_draft, run_manager_check, authenticate_gmail, is_gmail_authenticated, get_gmail_service, find_contact_email, save_draft
+from email_client import get_email_client
 from security_vault import set_key, get_key
 import json
 import os
@@ -227,8 +228,10 @@ with ui.tab_panels(tabs, value=dashboard):
             gmail_status = ui.label('Status: Not Authenticated')
             
             def check_gmail_status():
-                if is_gmail_authenticated():
-                    gmail_status.text = '✅ Status: Gmail Authenticated'
+                client = get_email_client()
+                if client.is_authenticated():
+                    addr = client.get_email_address()
+                    gmail_status.text = f'✅ Status: Authenticated as {addr}' if addr else '✅ Status: Gmail Authenticated'
                 else:
                     gmail_status.text = '❌ Status: Not Authenticated'
             

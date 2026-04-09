@@ -1,6 +1,7 @@
 from crewai import Agent, Task, Crew
 from crewai.tools import tool
 from security_vault import get_key
+from email_client import get_email_client  # NEW: rich Gmail client
 import os
 import requests
 from bs4 import BeautifulSoup
@@ -8,73 +9,39 @@ from crawl4ai import Crawl4AI
 import whois
 import validators
 import re
-from email.mime.text import MIMEText
-from email.header import Header
 from groq import Groq
-import googleapiclient.discovery
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
-import base64
-import webbrowser
 
-# Set API keys
+# ---------------------------------------------------------------------------
+# API key bootstrap
+# ---------------------------------------------------------------------------
 groq_key = get_key('groq_api_key')
-if groq_key:
-    pass  # Groq API key loaded for use by the Groq client
 
-# For Gmail - Initialize as None, will be set during authentication
-SCOPES = ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/gmail.drafts']
-TOKEN_PATH = os.path.join(os.getcwd(), 'token.json')  # nosec
-creds = None
-service = None
+# ---------------------------------------------------------------------------
+# Gmail – thin wrappers over EmailClient (keeps gui.py import surface intact)
+# ---------------------------------------------------------------------------
 
-def authenticate_gmail(client_secret_path):
+def authenticate_gmail(client_secret_path: str = None):
     """
-    Authenticate with Gmail using browser popup with account selection.
-    Opens browser for user to select Gmail account and authorize.
-    Returns: (credentials object, service object) or (None, None) on failure
+    Authenticate with Gmail via the EmailClient singleton.
+
+    Returns a (creds, service) tuple for backward-compatibility with gui.py,
+    or (None, None) on failure.
     """
-    global creds, service
-    try:
-        token_path = TOKEN_PATH
-        
-        # Check if token already exists
-        if os.path.exists(token_path):
-            creds = Credentials.from_authorized_user_file(token_path, SCOPES)
-            if creds and creds.valid:
-                service = googleapiclient.discovery.build('gmail', 'v1', credentials=creds)
-                return creds, service
-            elif creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-                service = googleapiclient.discovery.build('gmail', 'v1', credentials=creds)
-                return creds, service
-        
-        # If no valid token, create new flow with browser popup
-        if not os.path.exists(client_secret_path):
-            return None, None
-        
-        flow = InstalledAppFlow.from_client_secrets_file(client_secret_path, SCOPES)
-        # Run local server with browser popup (opens in default browser with account selection)
-        creds = flow.run_local_server(port=8080, open_browser=True)
-        
-        # Save credentials for future use
-        with open(token_path, 'w') as token_file:
-            token_file.write(creds.to_json())
-        
-        service = googleapiclient.discovery.build('gmail', 'v1', credentials=creds)
-        return creds, service
-    except Exception as e:
-        print(f"Gmail authentication failed: {str(e)}")
-        return None, None
+    client = get_email_client()
+    ok = client.authenticate(client_secret_path)
+    if ok:
+        return client.creds, client.service
+    return None, None
+
 
 def get_gmail_service():
-    """Get the current Gmail service instance"""
-    return service
+    """Return the underlying Gmail service from the EmailClient singleton."""
+    return get_email_client().service
 
-def is_gmail_authenticated():
-    """Check if Gmail is currently authenticated"""
-    return service is not None and creds is not None
+
+def is_gmail_authenticated() -> bool:
+    """Return True when the EmailClient singleton is authenticated."""
+    return get_email_client().is_authenticated()
 
 
 def find_emails_in_text(text: str) -> list:
@@ -232,28 +199,21 @@ def draft_email(job_info: str, tone: float) -> str:
 
 @tool
 def save_draft(to_email: str, subject: str, body: str) -> str:
-    if service:
-        msg = MIMEText(body, 'plain', 'utf-8')
-        msg['To'] = to_email
-        msg['From'] = 'me'
-        msg['Subject'] = Header(subject, 'utf-8')
-        raw_message = base64.urlsafe_b64encode(msg.as_bytes()).decode()
-        draft = {'message': {'raw': raw_message}}
-        service.users().drafts().create(userId='me', body=draft).execute()
-        return 'Draft saved'
-    return 'Gmail not configured'
+    """Save a composed email as a Gmail draft via EmailClient."""
+    client = get_email_client()
+    if not client.is_authenticated():
+        return 'Gmail not configured'
+    draft_id = client.save_draft(to=to_email, subject=subject, body=body)
+    return f'Draft saved (id={draft_id})' if draft_id else 'Draft save failed'
 
 @tool
 def check_bounces() -> list:
-    if service:
-        results = service.users().messages().list(userId='me', q='from:mailer-daemon OR subject:bounce').execute()
-        messages = results.get('messages', [])
-        bounces = []
-        for msg in messages:
-            msg_data = service.users().messages().get(userId='me', id=msg['id']).execute()
-            bounces.append(msg_data['snippet'])
-        return bounces
-    return []
+    """Scan the inbox for bounce notifications via EmailClient."""
+    client = get_email_client()
+    if not client.is_authenticated():
+        return []
+    emails = client.search('from:mailer-daemon OR subject:bounce', limit=20)
+    return [e.snippet for e in emails]
 
 # Agents
 researcher = Agent(
