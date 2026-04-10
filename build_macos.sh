@@ -45,7 +45,7 @@ if [ ! -f "$ASSETS_DIR/app_icon.icns" ]; then
         rm -rf "$ICONSET_DIR"
         mkdir -p "$ICONSET_DIR"
 
-        "$PYTHON_EXECUTABLE" - <<'PY'
+        "$PYTHON_EXECUTABLE" - <<PY
 from pathlib import Path
 from PIL import Image
 base = Path('$LOGO_PNG')
@@ -60,7 +60,7 @@ sizes = [16, 32, 64, 128, 256, 512, 1024]
 for size in sizes:
     for suffix in ['', '@2x']:
         actual = size * (2 if suffix == '@2x' else 1)
-        icon_file = iconset / f'appicon_{size}x{size}{suffix}.png'
+        icon_file = iconset / f'icon_{size}x{size}{suffix}.png'
         img.resize((actual, actual), Image.LANCZOS).save(icon_file)
 PY
         if command -v iconutil &> /dev/null; then
@@ -79,11 +79,11 @@ fi
 
 # Step 4: Create spec file
 echo "📝 Generating PyInstaller spec file..."
-python3 build_config.py
+"$PYTHON_EXECUTABLE" build_config.py
 
 # Step 5: Build with PyInstaller
 echo "🔨 Running PyInstaller..."
-python3 -m PyInstaller \
+"$PYTHON_EXECUTABLE" -m PyInstaller \
     --name="Elite Job Agent" \
     --windowed \
     --onedir \
@@ -113,9 +113,13 @@ if command -v create-dmg &> /dev/null; then
         "$DIST_DIR/Elite Job Agent.app"
     echo "✅ DMG created: $DIST_DIR/Elite Job Agent.dmg"
 else
-    echo "⚠️  create-dmg not available. Skipping DMG creation."
-    echo "   Install with: brew install create-dmg"
-    echo "   Or use macOS Disk Utility to create DMG manually"
+    echo "⚠️  create-dmg not available. Falling back to hdiutil..."
+    hdiutil create -volname "Elite Job Agent Installer" -srcfolder "$DIST_DIR/Elite Job Agent.app" -ov -format UDZO "$DIST_DIR/Elite Job Agent.dmg"
+    if [ -f "$DIST_DIR/Elite Job Agent.dmg" ]; then
+        echo "✅ DMG created using hdiutil: $DIST_DIR/Elite Job Agent.dmg"
+    else
+        echo "❌ DMG creation failed."
+    fi
 fi
 
 # Step 8: Verify build
