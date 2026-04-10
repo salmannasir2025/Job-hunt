@@ -218,11 +218,36 @@ with ui.tab_panels(tabs, value=dashboard):
         unlock_button = ui.button('Unlock')
         vault_panel = ui.column()
         with vault_panel:
-            # Groq API Key Section
-            ui.label('🔑 Groq API Configuration').classes('font-bold')
-            groq_input = ui.input('Groq API Key', password=True)
-            ui.button('Save Groq Key', on_click=lambda: (set_key('groq_api_key', groq_input.value), log_progress("Groq API key saved"), update_console("Groq API key saved successfully")))
+            # Model Selection
+            ui.label('🤖 AI Provider Selection').classes('font-bold text-lg')
+            providers = ['Groq', 'OpenAI', 'Custom AI Provider']
+            current_p = get_key('active_ai_provider') or 'Groq'
+            ui.select(providers, value=current_p, label='Active Provider',
+                      on_change=lambda e: (set_key('active_ai_provider', e.value), update_console(f"Switched to {e.value}")))
+
+            ui.label('🔑 API Credentials').classes('font-bold mt-2')
             
+            # Groq
+            groq_input = ui.input('Groq API Key', password=True).style('width: 400px')
+            ui.button('Save Groq Key', on_click=lambda: (set_key('groq_api_key', groq_input.value), update_console("Groq Key Saved")))
+
+            # OpenAI
+            openai_input = ui.input('OpenAI API Key', password=True).style('width: 400px')
+            ui.button('Save OpenAI Key', on_click=lambda: (set_key('openai_api_key', openai_input.value), update_console("OpenAI Key Saved")))
+
+            # Custom AI Provider
+            with ui.expansion('Add Custom AI Provider (OpenRouter, DeepSeek, etc.)').classes('w-full border rounded'):
+                custom_url = ui.input('Base URL', placeholder='https://api.deepseek.com/v1')
+                custom_key = ui.input('API Key', password=True)
+                custom_model = ui.input('Model Name', placeholder='deepseek-chat')
+                ui.button('Save Custom Provider', on_click=lambda: (
+                    set_key('custom_ai_url', custom_url.value),
+                    set_key('custom_ai_key', custom_key.value),
+                    set_key('custom_ai_model', custom_model.value),
+                    set_key('active_ai_provider', 'Custom AI Provider'),
+                    update_console("Custom AI Provider Configured and Activated")
+                )).classes('bg-green-500')
+
             # Gmail Authentication Section
             ui.label('📧 Gmail Authentication').classes('font-bold')
             gmail_status = ui.label('Status: Not Authenticated')

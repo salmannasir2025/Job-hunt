@@ -445,6 +445,12 @@ class EmailClient:
             print(f"EmailClient.delete_draft: {exc}")
             return False
 
+    def _sanitize_header(self, value: str) -> str:
+        """Remove newlines and carriage returns to prevent header injection."""
+        if not value:
+            return ""
+        return value.replace("\n", "").replace("\r", "")
+
     def _build_mime(
         self,
         to: str,
@@ -457,12 +463,12 @@ class EmailClient:
     ) -> MIMEMultipart:
         """Build and return a MIME message ready to be base64-encoded."""
         msg = MIMEMultipart("mixed")
-        msg["To"] = to
+        msg["To"] = self._sanitize_header(to)
         msg["Subject"] = Header(subject, "utf-8").encode()
         if cc:
-            msg["Cc"] = cc
+            msg["Cc"] = self._sanitize_header(cc)
         if bcc:
-            msg["Bcc"] = bcc
+            msg["Bcc"] = self._sanitize_header(bcc)
 
         subtype = "html" if is_html else "plain"
         msg.attach(MIMEText(body, subtype, "utf-8"))

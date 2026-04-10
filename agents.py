@@ -9,12 +9,31 @@ from crawl4ai import Crawl4AI
 import whois
 import validators
 import re
-from groq import Groq
+from langchain_groq import ChatGroq
+from langchain_openai import ChatOpenAI
 
 # ---------------------------------------------------------------------------
 # API key bootstrap
 # ---------------------------------------------------------------------------
-groq_key = get_key('groq_api_key')
+def get_llm():
+    """
+    Factory to return the active LLM provider from the Vault.
+    Supports Groq, OpenAI, and Custom OpenAI-compatible endpoints.
+    """
+    provider = get_key('active_ai_provider') or 'Groq'
+    
+    if provider == 'OpenAI':
+        return ChatOpenAI(api_key=get_key('openai_api_key'), model='gpt-4o')
+    
+    if provider == 'Custom AI Provider':
+        return ChatOpenAI(
+            api_key=get_key('custom_ai_key'),
+            base_url=get_key('custom_ai_url'),
+            model=get_key('custom_ai_model') or 'default-model'
+        )
+
+    # Default to Groq
+    return ChatGroq(groq_api_key=get_key('groq_api_key'), model_name='llama3-8b-8192')
 
 # ---------------------------------------------------------------------------
 # Gmail – thin wrappers over EmailClient (keeps gui.py import surface intact)
@@ -187,15 +206,11 @@ def validate_email(email: str) -> bool:
 @tool
 def draft_email(job_info: str, tone: float) -> str:
     try:
-        client = Groq(api_key=groq_key)
         prompt = f'Draft a human-like email for job application based on: {job_info}. Tone level: {tone} (0.1 formal, 1.0 creative). Max 8 lines, no AI clichés, end with UAE-specific closing like "Best regards from Dubai".'
-        response = client.chat.completions.create(
-            model='llama3-8b-8192',
-            messages=[{'role': 'user', 'content': prompt}]
-        )
-        return response.choices[0].message.content
-    except:
-        return 'Failed to draft'
+        response = get_llm().invoke(prompt)
+        return response.content
+    except Exception as e:
+        return f'Failed to draft: {str(e)}'
 
 @tool
 def save_draft(to_email: str, subject: str, body: str) -> str:
@@ -216,40 +231,18 @@ def check_bounces() -> list:
     return [e.snippet for e in emails]
 
 # Agents
-researcher = Agent(
-    role='Researcher',
-    goal='Find job listings and contact emails from portals or custom URLs',
-    backstory='Expert in web scraping and job market research',
-    tools=[scrape_portal, crawl_url],
-    verbose=True
-)
-
-auditor = Agent(
-    role='Auditor',
-    goal='Verify company legitimacy and email validity',
-    backstory='Cybersecurity specialist for job scam detection',
-    tools=[check_whois, validate_email],
-    verbose=True
-)
-
-ghostwriter = Agent(
-    role='Ghostwriter',
-    goal='Draft personalized, human-like outreach emails',
-    backstory='Professional writer crafting authentic job application emails',
-    tools=[draft_email, save_draft],
-    verbose=True
-)
-
-manager = Agent(
-    role='Manager',
-    goal='Orchestrate the team and handle email bounce recovery',
-    backstory='Project manager coordinating job search efforts and recovery processes',
-    tools=[check_bounces],
-    verbose=True
-)
 
 # Functions
 def run_research(portal, keywords, url):
+    llm = get_llm()
+    researcher = Agent(
+        role='Researcher',
+        goal='Find job listings and contact emails from portals or custom URLs',
+        backstory='Expert in web scraping and job market research',
+        llm=llm,
+        tools=[scrape_portal, crawl_url],
+        verbose=True
+    )
     if url:
         task = Task(description=f'Crawl the custom URL {url} to extract job titles and contact emails', agent=researcher)
     else:
@@ -258,16 +251,43 @@ def run_research(portal, keywords, url):
     return crew.kickoff()
 
 def run_audit(company, domain, email):
+    llm = get_llm()
+    auditor = Agent(
+        role='Auditor',
+        goal='Verify company legitimacy and email validity',
+        backstory='Cybersecurity specialist for job scam detection',
+        llm=llm,
+        tools=[check_whois, validate_email],
+        verbose=True
+    )
     task = Task(description=f'Perform legitimacy check on company {company}, domain {domain}, email {email}', agent=auditor)
     crew = Crew(agents=[auditor], tasks=[task])
     return crew.kickoff()
 
 def run_draft(job_info, tone):
+    llm = get_llm()
+    ghostwriter = Agent(
+        role='Ghostwriter',
+        goal='Draft personalized, human-like outreach emails',
+        backstory='Professional writer crafting authentic job application emails',
+        llm=llm,
+        tools=[draft_email, save_draft],
+        verbose=True
+    )
     task = Task(description=f'Draft an email for job: {job_info} with tone {tone}', agent=ghostwriter)
     crew = Crew(agents=[ghostwriter], tasks=[task])
     return crew.kickoff()
 
 def run_manager_check():
+    llm = get_llm()
+    manager = Agent(
+        role='Manager',
+        goal='Orchestrate the team and handle email bounce recovery',
+        backstory='Project manager coordinating job search efforts and recovery processes',
+        llm=llm,
+        tools=[check_bounces],
+        verbose=True
+    )
     task = Task(description='Scan inbox for bounced emails and identify companies for recovery', agent=manager)
     crew = Crew(agents=[manager], tasks=[task])
     return crew.kickoff()
