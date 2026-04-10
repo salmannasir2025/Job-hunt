@@ -20,24 +20,36 @@ echo Building Elite Job Agent for Windows...
 echo ========================================
 echo.
 
-REM Step 1: Check Python
-python --version >nul 2>&1
+REM Step 1: Check Python and Virtual Environment
+set PYTHON_EXE=python
+if exist "%PROJECT_ROOT%.venv_stable\Scripts\python.exe" set PYTHON_EXE="%PROJECT_ROOT%.venv_stable\Scripts\python.exe"
+if exist "%PROJECT_ROOT%.venv\Scripts\python.exe" set PYTHON_EXE="%PROJECT_ROOT%.venv\Scripts\python.exe"
+if exist "%PROJECT_ROOT%.venv_automated\Scripts\python.exe" set PYTHON_EXE="%PROJECT_ROOT%.venv_automated\Scripts\python.exe"
+
+echo 🔍 Running System Alignment Check...
+%PYTHON_EXE% system_validator.py
+if errorlevel 1 (
+    echo ❌ System alignment failed
+    exit /b 1
+)
+
+%PYTHON_EXE% --version >nul 2>&1
 if errorlevel 1 (
     echo ❌ Python not found. Please install Python 3.8+
     exit /b 1
 )
-echo ✅ Python found
+echo ✅ Python found: %PYTHON_EXE%
 
 REM Step 2: Install PyInstaller and Pillow if needed
-pip show pyinstaller >nul 2>&1
+%PYTHON_EXE% -m pip show pyinstaller >nul 2>&1
 if errorlevel 1 (
     echo ⚠️  Installing PyInstaller...
-    pip install pyinstaller
+    %PYTHON_EXE% -m pip install pyinstaller
 )
-pip show pillow >nul 2>&1
+%PYTHON_EXE% -m pip show pillow >nul 2>&1
 if errorlevel 1 (
     echo ⚠️  Installing Pillow...
-    pip install pillow
+    %PYTHON_EXE% -m pip install pillow
 )
 
 REM Step 3: Create directories
@@ -65,7 +77,7 @@ if not exist "%ASSETS_DIR%\app_icon.ico" (
 REM Step 5: Build with PyInstaller
 echo.
 echo 🔨 Building executable with PyInstaller...
-python -m PyInstaller ^
+%PYTHON_EXE% -m PyInstaller ^
     --name="Elite Job Agent" ^
     --windowed ^
     --onefile ^

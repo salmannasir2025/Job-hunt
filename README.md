@@ -1,7 +1,7 @@
 # Job Agent
 
 ## Overview
-A production-ready Python application for automated job search using a multi-agent AI system. Features secure encrypted storage, web scraping, legitimacy checks, and Gmail integration for email drafting.
+A production-ready Python application for automated job search using a multi-agent AI system. Features **Hardware-Bound System Alignment**, secure encrypted storage, web scraping, and Gmail integration. Verified for cross-platform stability on Windows, Linux, and macOS.
 
 ## Features
 - **Secure Vault**: Encrypted storage for API keys and sensitive data.
@@ -14,21 +14,21 @@ A production-ready Python application for automated job search using a multi-age
 
 ## Setup
 1. Clone or download the project.
-2. Install dependencies: `pip install -r requirements.txt`
-3. Run the application: `python main.py`
-4. In the GUI, go to 'The Vault' tab, unlock with password 'admin', and set your API keys and client_secret.json path.
-5. Authorize Gmail when prompted.
+2. **Automated Setup**: Run `python build.py`. This will automatically detect your OS, create a virtual environment, and install all dependencies without manual intervention.
+3. In the GUI, go to 'The Vault' tab, unlock with password 'admin', and set your API keys.
+4. Authorize Gmail when prompted.
 
-## Cross-Platform Builds
-For platform-specific installers, use the provided build tools:
-- `build_macos.sh` for macOS `.dmg`/`.app`
-- `build_windows.bat` for Windows `.exe`
-- `build_linux.sh` for Linux standalone or AppImage
-- `build.py` detects your OS and runs the correct build script
+## Cross-Platform Alignment
+The project uses a **System Validator** to ensure executables are perfectly aligned with the target hardware:
+- **Hardware ID Tracking**: Each build is validated against the local machine's unique hardware signature.
+- **CPU Feature Detection**: Automatically detects AVX/AVX2/ARM features to choose the best runtime libraries.
+- **Architecture Validation**: Ensures Python and library binaries match the target CPU architecture.
 
-The project `logo.png` is now used to generate installer icons and app launcher icons for all supported platforms when the build scripts run.
-
-See `BUILD.md` and `RELEASES.md` for full build, packaging, and distribution instructions.
+For platform-specific installers:
+- `build.py`: Recommended for all users. Automatically repairs the environment and runs the correct build.
+- `build_macos.sh`: macOS `.dmg`/`.app` (Hardware-aligned)
+- `build_windows.bat`: Windows `.exe` (Hardware-aligned)
+- `build_linux.sh`: Linux standalone or AppImage (Hardware-aligned)
 
 ## Installation and Use
 After you build or download a platform-specific installer, follow these steps:

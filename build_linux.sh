@@ -22,6 +22,17 @@ echo "🐧 Linux Build System"
 echo "🔨 Building Elite Job Agent for Linux..."
 echo "========================================"
 
+# Detect Python Executable
+PYTHON_EXECUTABLE=$(if [ -x .venv_stable/bin/python ]; then printf '%s' ".venv_stable/bin/python"; \
+    elif [ -x .venv/bin/python ]; then printf '%s' ".venv/bin/python"; \
+    elif [ -x .venv_automated/bin/python ]; then printf '%s' ".venv_automated/bin/python"; \
+    elif [ -x venv/bin/python ]; then printf '%s' "venv/bin/python"; \
+    elif command -v python3 &> /dev/null; then command -v python3; \
+    else command -v python; fi)
+
+echo "🔍 Running System Alignment Check..."
+"$PYTHON_EXECUTABLE" system_validator.py || { echo "❌ System alignment failed"; exit 1; }
+
 # Step 1: Detect Linux distribution
 echo "📋 Detecting Linux distribution..."
 if [ -f /etc/os-release ]; then

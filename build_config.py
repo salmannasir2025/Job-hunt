@@ -26,11 +26,11 @@ DESCRIPTION = 'Production-ready job search automation tool'
 # PyInstaller spec file content
 PYINSTALLER_SPEC = f'''# -*- mode: python ; coding: utf-8 -*-
 a = Analysis(
-    ['main.py'],
+    ['{PROJECT_ROOT / "main.py"}'],
     pathex=[],
     binaries=[],
     datas=[
-        ('requirements.txt', '.'),
+        ('{PROJECT_ROOT / "requirements.txt"}', '.'),
     ],
     hiddenimports=[
         'nicegui',
@@ -71,13 +71,13 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='assets/app_icon.icns',
+    icon='{PROJECT_ROOT / "assets/app_icon.icns"}',
 )
 
 app = BUNDLE(
     exe,
     name='Elite Job Agent.app',
-    icon='assets/app_icon.icns',
+    icon='{PROJECT_ROOT / "assets/app_icon.icns"}',
     bundle_identifier='com.salman.elite-job-agent',
     info_plist={{
         'NSPrincipalClass': 'NSApplication',

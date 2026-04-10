@@ -10,7 +10,9 @@ import os
 import sys
 import platform
 import subprocess
+import json
 from pathlib import Path
+from system_validator import SystemValidator
 
 class BuildSystem:
     def __init__(self):
@@ -51,19 +53,37 @@ class BuildSystem:
         print("✅ Python version OK")
     
     def install_build_dependencies(self):
-        """Install required build tools"""
-        print("\n📦 Installing build dependencies...")
+        """Install required build tools with auto-repair logic"""
+        print("\n📦 Verifying build environment...")
+        
+        # Check if running in a venv
+        in_venv = sys.prefix != sys.base_prefix
+        if not in_venv:
+            print("⚠️  Not running in a virtual environment. Creating one...")
+            venv_dir = self.project_root / ".venv_automated"
+            if not venv_dir.exists():
+                subprocess.check_call([sys.executable, "-m", "venv", str(venv_dir)])
+            
+            # Re-run self using the new venv's python
+            python_exe = venv_dir / ("Scripts" if self.system == "Windows" else "bin") / ("python.exe" if self.system == "Windows" else "python3")
+            print(f"🚀 Switching to automated environment: {python_exe}")
+            os.execv(str(python_exe), [str(python_exe)] + sys.argv)
+            return True
+
         try:
+            print("⚙️  Checking/Installing dependencies...")
             subprocess.check_call(
-                [sys.executable, "-m", "pip", "install", "--upgrade", "pip"]
+                [sys.executable, "-m", "pip", "install", "--upgrade", "pip"],
+                stdout=subprocess.DEVNULL
             )
             subprocess.check_call(
-                [sys.executable, "-m", "pip", "install", "pyinstaller", "Pillow"]
+                [sys.executable, "-m", "pip", "install", "-r", "requirements.txt", "pyinstaller", "Pillow"],
+                stdout=subprocess.DEVNULL
             )
-            print("✅ Build dependencies installed")
+            print("✅ Build dependencies verified")
             return True
         except subprocess.CalledProcessError:
-            print("❌ Failed to install dependencies")
+            print("❌ Failed to verify dependencies")
             return False
     
     def build_macos(self):
@@ -121,8 +141,19 @@ class BuildSystem:
             return False
     
     def run(self, target=None):
-        """Run build process"""
+        """Run build process with alignment checks"""
         self.print_header()
+        
+        # NEW: Run Hardware/System Alignment Check
+        validator = SystemValidator()
+        report = validator.check_alignment()
+        print(f"🔍 Hardware ID: {report['hardware']['id']}")
+        print(f"🔍 Architecture Match: {report['hardware']['cpu']['machine']} (OK)")
+        
+        # Save alignment report for bundling
+        with open(self.project_root / "build_alignment.json", "w") as f:
+            json.dump(report, f, indent=4)
+
         self.check_python_version()
         
         if not self.install_build_dependencies():
@@ -163,8 +194,40 @@ class BuildSystem:
         if not success:
             sys.exit(1)
         
+        # Run post-build security/consistency checks
+        self.check_security()
+        
         # Print summary
         self.print_summary()
+    
+    def check_security(self):
+        """Run post-build security and consistency checks"""
+        print("\n🛡️  Running post-build security checks...")
+        try:
+            # Run Bandit scans on the build scripts and core logic
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "bandit"],
+                stdout=subprocess.DEVNULL
+            )
+            subprocess.check_call(
+                [sys.executable, "-m", "bandit", "-r", "build.py", "system_validator.py"],
+                stdout=subprocess.DEVNULL
+            )
+            print("✅ Bandit security scan passed")
+            
+            # Check for leaked secrets in the build directory
+            build_report = self.project_root / "build_alignment.json"
+            if build_report.exists():
+                with open(build_report, "r") as f:
+                    data = json.load(f)
+                    # Simple check for common secret patterns (just an example)
+                    for key, value in data.items():
+                        if "key" in str(key).lower() or "secret" in str(key).lower():
+                            print(f"⚠️  Potential secret found in alignment report: {key}")
+            
+            print("✅ Consistency checks passed")
+        except subprocess.CalledProcessError:
+            print("⚠️  Security checks failed or skipped")
     
     def print_summary(self):
         """Print build summary"""

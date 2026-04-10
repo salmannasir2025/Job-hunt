@@ -14,10 +14,15 @@ SPEC_DIR="$PROJECT_ROOT/build_specs"
 LOGO_PNG="$PROJECT_ROOT/logo.png"
 
 APP_NAME="Elite Job Agent"
-APP_VERSION="1.0.0"
-BUNDLE_ID="com.salman.elite-job-agent"
+PYTHON_EXECUTABLE="${PYTHON_EXECUTABLE:-$(cd "$PROJECT_ROOT" && \
+    if [ -x .venv_stable/bin/python ]; then printf '%s' "$PROJECT_ROOT/.venv_stable/bin/python"; \
+    elif [ -x .venv/bin/python ]; then printf '%s' "$PROJECT_ROOT/.venv/bin/python"; \
+    elif [ -x .venv_automated/bin/python ]; then printf '%s' "$PROJECT_ROOT/.venv_automated/bin/python"; \
+    elif command -v python3 &> /dev/null; then command -v python3; \
+    else command -v python; fi)}"
 
-PYTHON_EXECUTABLE="${PYTHON_EXECUTABLE:-$(cd "$PROJECT_ROOT" && if [ -x .venv/bin/python ]; then printf '%s' "$PROJECT_ROOT/.venv/bin/python"; elif command -v python3 &> /dev/null; then command -v python3; else command -v python; fi)}"
+echo "🔍 Running System Alignment Check..."
+"$PYTHON_EXECUTABLE" system_validator.py || { echo "❌ System alignment failed"; exit 1; }
 
 if [ -z "$PYTHON_EXECUTABLE" ]; then
     echo "❌ Python 3 not found"
@@ -84,15 +89,11 @@ echo "📝 Generating PyInstaller spec file..."
 # Step 5: Build with PyInstaller
 echo "🔨 Running PyInstaller..."
 "$PYTHON_EXECUTABLE" -m PyInstaller \
-    --name="Elite Job Agent" \
-    --windowed \
-    --onedir \
-    --icon="$ASSETS_DIR/app_icon.icns" \
-    --osx-bundle-identifier="$BUNDLE_ID" \
-    --add-data "requirements.txt:." \
-    --add-data "README.md:." \
-    --add-data ".gitignore:." \
-    main.py
+    --clean \
+    --noconfirm \
+    --workpath="$BUILD_DIR" \
+    --distpath="$DIST_DIR" \
+    "build_specs/elite_job_agent.spec"
 
 # Step 6: Remove old build artifacts
 rm -rf "$DIST_DIR/Elite Job Agent.dmg" 2>/dev/null || true
