@@ -1,7 +1,7 @@
 # Job Agent
 
 ## Overview
-A production-ready Python application for automated job search using a multi-agent AI system. Features secure encrypted storage, web scraping, legitimacy checks, and Gmail integration for email drafting.
+A production-ready (Enterprise grade) Python application for automated job search using a multi-agent AI system. Features secure encrypted storage, web scraping, legitimacy checks, and Gmail integration for email drafting.
 
 ## Features
 - **Secure Vault**: Encrypted storage for API keys and sensitive data.
